@@ -1,9 +1,9 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
 import os
 
-# Configuração da página no navegador
 st.set_page_config(
     page_title="Sistema de Requisição de Equipamentos",
     page_icon="🎒",
@@ -12,7 +12,6 @@ st.set_page_config(
 
 FILE_PATH = "requisicoes.csv"
 
-# Função para carregar ou inicializar os dados
 def carregar_dados():
     if os.path.exists(FILE_PATH):
         return pd.read_csv(FILE_PATH, dtype=str)
@@ -24,26 +23,22 @@ def carregar_dados():
         df.to_csv(FILE_PATH, index=False)
         return df
 
-# Função para guardar dados no CSV
 def guardar_dados(df):
     df.to_csv(FILE_PATH, index=False)
 
-# Carregar dados atuais
 df_requisicoes = carregar_dados()
 
 st.title("🎒 Sistema de Requisição de Equipamentos - Escola")
 st.markdown("---")
 
-# Separadores da aplicação (Tabs)
 tab_req, tab_dev, tab_hist = st.tabs(["📝 Nova Requisição", "🔄 Devolução", "📋 Histórico & Pendentes"])
 
 # ---------------------------------------------------------
-# TAB 1: NOVA REQUIÇÃO
+# TAB 1: NOVA REQUISIÇÃO
 # ---------------------------------------------------------
 with tab_req:
     st.header("Registar Nova Requisição")
     
-    # Usar st.form limpa automaticamente os campos após submeter
     with st.form(key="form_requisicao", clear_on_submit=True):
         col1, col2 = st.columns(2)
         
@@ -52,8 +47,7 @@ with tab_req:
             num_aluno = st.text_input("Número do Aluno", placeholder="Ex: 12345")
         
         with col2:
-            codigo_equipamento = st.text_input("Código QR / Código de Barras do Equipamento", placeholder="Leia com o scanner USB ou digite...")
-            st.caption("📷 Se usares a câmara do Chromebook para tirar foto ao QR, digita o código na caixa acima.")
+            codigo_equipamento = st.text_input("Código QR / Código de Barras do Equipamento", placeholder="Leia com o leitor USB ou digite aqui...")
 
         btn_submeter = st.form_submit_button("✅ Confirmar Requisição", type="primary", use_container_width=True)
 
@@ -78,6 +72,28 @@ with tab_req:
             guardar_dados(df_requisicoes)
             st.success(f"✅ Requisição do equipamento '{codigo_equipamento}' registada para {nome_aluno} com sucesso!")
 
+    # SCANNER DE CÂMARA EM TEMPO REAL (HTML5/JavaScript)
+    with st.expander("📷 Usar Câmara do Chromebook como Leitor de Código de Barras / QR"):
+        st.write("Aponte a câmara do Chromebook para o código. Quando detetado, o código será exibido abaixo para você copiar/utilizar.")
+        
+        html_code = """
+        <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+        <div id="reader" style="width: 100%; max-width: 500px; margin: auto;"></div>
+        <div id="result" style="margin-top: 15px; font-weight: bold; font-size: 18px; color: green; text-align: center;"></div>
+        <script>
+            function onScanSuccess(decodedText, decodedResult) {
+                document.getElementById('result').innerText = "Código Detetado: " + decodedText;
+            }
+            function onScanFailure(error) {
+                // ignora erros de procura de frames
+            }
+            let html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", { fps: 10, qrbox: {width: 250, height: 250} }, /* verbose= */ false);
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        </script>
+        """
+        components.html(html_code, height=450)
+
 # ---------------------------------------------------------
 # TAB 2: DEVOLUÇÃO
 # ---------------------------------------------------------
@@ -85,7 +101,7 @@ with tab_dev:
     st.header("Registar Devolução de Equipamento")
     
     with st.form(key="form_devolucao", clear_on_submit=True):
-        codigo_dev = st.text_input("Código do Equipamento a Devolver", placeholder="Leia ou introduza o código QR do equipamento...")
+        codigo_dev = st.text_input("Código do Equipamento a Devolver", placeholder="Leia com leitor USB ou digite o código...")
         btn_devolver = st.form_submit_button("🔄 Confirmar Devolução", type="primary", use_container_width=True)
 
     if btn_devolver:
