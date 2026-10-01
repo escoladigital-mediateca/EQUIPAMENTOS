@@ -19,17 +19,19 @@ COLUNAS = [
 ]
 
 def carregar_dados():
-    # Verifica se o ficheiro existe e se NÃO está vazio (tamanho > 0 bytes)
     if os.path.exists(FILE_PATH) and os.path.getsize(FILE_PATH) > 0:
         try:
-            return pd.read_csv(FILE_PATH, dtype=str)
+            df = pd.read_csv(FILE_PATH, dtype=str)
+            # Garantir que todas as colunas existem
+            for col in COLUNAS:
+                if col not in df.columns:
+                    df[col] = ""
+            return df
         except pd.errors.EmptyDataError:
-            # Se der erro de ficheiro vazio, recria o DataFrame
             df = pd.DataFrame(columns=COLUNAS)
             df.to_csv(FILE_PATH, index=False)
             return df
     else:
-        # Cria novo ficheiro com cabeçalhos se não existir ou estiver vazio
         df = pd.DataFrame(columns=COLUNAS)
         df.to_csv(FILE_PATH, index=False)
         return df
@@ -63,6 +65,10 @@ with tab_req:
         btn_submeter = st.form_submit_button("✅ Confirmar Requisição", type="primary", use_container_width=True)
 
     if btn_submeter:
+        nome_aluno = nome_aluno.strip() if nome_aluno else ""
+        num_aluno = num_aluno.strip() if num_aluno else ""
+        codigo_equipamento = codigo_equipamento.strip() if codigo_equipamento else ""
+
         if not nome_aluno or not num_aluno or not codigo_equipamento:
             st.error("⚠️ Por favor, preencha todos os campos obrigatórios!")
         else:
@@ -106,29 +112,43 @@ with tab_req:
         components.html(html_code, height=450)
 
 # ---------------------------------------------------------
-# TAB 2: DEVOLUÇÃO
+# TAB 2: DEVOLUÇÃO (CORRIGIDO PARA LEITOR USB)
 # ---------------------------------------------------------
 with tab_dev:
     st.header("Registar Devolução de Equipamento")
     
-    with st.form(key="form_devolucao", clear_on_submit=True):
-        codigo_dev = st.text_input("Código do Equipamento a Devolver", placeholder="Leia com leitor USB ou digite o código...")
+    # Inicializar a variável na sessão caso não exista
+    if "input_dev_codigo" not in st.session_state:
+        st.session_state["input_dev_codigo"] = ""
+
+    with st.form(key="form_devolucao", clear_on_submit=False):
+        codigo_dev = st.text_input(
+            "Código do Equipamento a Devolver", 
+            placeholder="Leia com o leitor USB ou digite o código...",
+            key="input_dev_codigo"
+        )
         btn_devolver = st.form_submit_button("🔄 Confirmar Devolução", type="primary", use_container_width=True)
 
     if btn_devolver:
-        if not codigo_dev:
-            st.error("⚠️ Por favor, introduza o código do equipamento!")
+        codigo_limpo = codigo_dev.strip() if codigo_dev else ""
+        
+        if not codigo_limpo:
+            st.error("⚠️️ Por favor, introduza ou leia o código do equipamento!")
         else:
-            mask = (df_requisicoes["Codigo_Equipamento"] == codigo_dev) & (df_requisicoes["Estado"] == "Pendente")
+            # Comparação que ignora espaços extras no início e fim
+            mask = (df_requisicoes["Codigo_Equipamento"].astype(str).str.strip() == codigo_limpo) & (df_requisicoes["Estado"] == "Pendente")
             
             if mask.any():
                 data_dev = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 df_requisicoes.loc[mask, "Data_Devolucao"] = data_dev
                 df_requisicoes.loc[mask, "Estado"] = "Devolvido"
                 guardar_dados(df_requisicoes)
-                st.success(f"✅ Equipamento '{codigo_dev}' devolvido com sucesso em {data_dev}!")
+                
+                st.success(f"✅ Equipamento '{codigo_limpo}' devolvido com sucesso em {data_dev}!")
+                # Limpa a caixa de texto após o sucesso da devolução
+                st.session_state["input_dev_codigo"] = ""
             else:
-                st.error(f"❌ Não foi encontrada nenhuma requisição pendente para o código '{codigo_dev}'.")
+                st.error(f"❌ Não foi encontrada nenhuma requisição pendente para o código '{codigo_limpo}'.")
 
 # ---------------------------------------------------------
 # TAB 3: HISTÓRICO E PENDENTES
