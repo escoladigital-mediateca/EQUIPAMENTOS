@@ -10,8 +10,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# ... (restante código) ...
-
 # TÍTULO COM LOGOTIPO
 col_logo, col_titulo = st.columns([1, 5]) # Cria duas colunas para alinhar a imagem e o texto
 
