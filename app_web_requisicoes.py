@@ -40,7 +40,7 @@ def guardar_dados(df):
 
 df_requisicoes = carregar_dados()
 
-st.title("🎒 Sistema de Requisição de Equipamentos - Escola")
+st.title("🎒 Sistema de Requisição de Equipamentos - Escola Digital")
 st.markdown("---")
 
 tab_req, tab_dev, tab_hist = st.tabs(["📝 Nova Requisição", "🔄 Devolução", "📋 Histórico & Pendentes"])
