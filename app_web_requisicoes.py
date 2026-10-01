@@ -1,28 +1,14 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
 import os
 
-# Configuração da página (podes colocar o logo também como ícone do separador do navegador!)
+# Configuração da página (usa o logo.png se existir para a aba do navegador)
 st.set_page_config(
     page_title="Sistema de Requisição de Equipamentos",
     page_icon="logo.png" if os.path.exists("logo.png") else "🎒",
     layout="wide"
-)
-
-# TÍTULO COM LOGOTIPO
-col_logo, col_titulo = st.columns([1, 5]) # Cria duas colunas para alinhar a imagem e o texto
-
-with col_logo:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=120) # Ajusta a largura (width) se necessário
-    else:
-        st.title("🎒")
-
-with col_titulo:
-    st.title("Sistema de Requisição de Equipamentos - Escola")
-
-st.markdown("---")
 )
 
 FILE_PATH = "requisicoes.csv"
@@ -55,7 +41,20 @@ def guardar_dados(df):
 
 df_requisicoes = carregar_dados()
 
-st.title("🎒 Sistema de Requisição de Equipamentos - Escola Digital")
+# ---------------------------------------------------------
+# CABEÇALHO COM LOGOTIPO E TÍTULO
+# ---------------------------------------------------------
+col_logo, col_titulo = st.columns([1, 6])
+
+with col_logo:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=110)
+    else:
+        st.title("🎒")
+
+with col_titulo:
+    st.title("Sistema de Requisição de Equipamentos")
+
 st.markdown("---")
 
 tab_req, tab_dev, tab_hist = st.tabs(["📝 Nova Requisição", "🔄 Devolução", "📋 Histórico & Pendentes"])
