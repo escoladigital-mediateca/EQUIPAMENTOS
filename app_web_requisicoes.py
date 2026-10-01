@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 import os
 
-# Configuração da página (usa o logo.png se existir para a aba do navegador)
+# Configuração da página
 st.set_page_config(
     page_title="Requisição de Equipamentos - Escola Digital",
     page_icon="logo.png" if os.path.exists("logo.png") else "🎒",
@@ -65,9 +65,12 @@ tab_req, tab_dev, tab_hist = st.tabs(["📝 Nova Requisição", "🔄 Devoluçã
 with tab_req:
     st.header("Registar Nova Requisição")
     
-    # Limpeza segura usando chaves dinâmicas
     if "req_form_id" not in st.session_state:
         st.session_state["req_form_id"] = 0
+    if "confirm_req" not in st.session_state:
+        st.session_state["confirm_req"] = False
+    if "dados_pendentes_req" not in st.session_state:
+        st.session_state["dados_pendentes_req"] = None
 
     form_id = st.session_state["req_form_id"]
 
@@ -90,28 +93,52 @@ with tab_req:
 
         if not nome_limpo or not num_limpo or not codigo_limpo:
             st.error("⚠️ Por favor, preencha todos os campos obrigatórios (Nome, Número e Código)!")
+            st.session_state["confirm_req"] = False
         else:
-            req_id = datetime.now().strftime("%Y%m%d%H%M%S")
-            data_req = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            nova_linha = {
-                "ID_Requisicao": req_id,
-                "Numero_Aluno": num_limpo,
-                "Nome_Aluno": nome_limpo,
-                "Codigo_Equipamento": codigo_limpo,
-                "Data_Requisicao": data_req,
-                "Data_Devolucao": "",
-                "Estado": "Pendente"
+            st.session_state["dados_pendentes_req"] = {
+                "nome": nome_limpo,
+                "num": num_limpo,
+                "codigo": codigo_limpo
             }
-            
-            df_requisicoes = pd.concat([df_requisicoes, pd.DataFrame([nova_linha])], ignore_index=True)
-            guardar_dados(df_requisicoes)
-            
-            st.success(f"✅ Requisição do equipamento '{codigo_limpo}' registada para {nome_limpo} com sucesso!")
-            
-            # Incrementa o ID para reinicializar os campos em branco
-            st.session_state["req_form_id"] += 1
-            st.rerun()
+            st.session_state["confirm_req"] = True
+
+    # Modal / Bloco de Confirmação para Requisição
+    if st.session_state.get("confirm_req") and st.session_state.get("dados_pendentes_req"):
+        dados = st.session_state["dados_pendentes_req"]
+        st.warning(f"❓ **Confirma a requisição?**\n\n• **Aluno:** {dados['nome']} ({dados['num']})\n• **Equipamento:** {dados['codigo']}")
+        
+        col_conf1, col_conf2 = st.columns(2)
+        with col_conf1:
+            if st.button("👍 Sim, Registar Requisição", type="primary", key="btn_sim_req", use_container_width=True):
+                req_id = datetime.now().strftime("%Y%m%d%H%M%S")
+                data_req = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                nova_linha = {
+                    "ID_Requisicao": req_id,
+                    "Numero_Aluno": dados["num"],
+                    "Nome_Aluno": dados["nome"],
+                    "Codigo_Equipamento": dados["codigo"],
+                    "Data_Requisicao": data_req,
+                    "Data_Devolucao": "",
+                    "Estado": "Pendente"
+                }
+                
+                df_requisicoes = pd.concat([df_requisicoes, pd.DataFrame([nova_linha])], ignore_index=True)
+                guardar_dados(df_requisicoes)
+                
+                st.success(f"✅ Requisição do equipamento '{dados['codigo']}' registada com sucesso!")
+                
+                # Reset dos estados
+                st.session_state["confirm_req"] = False
+                st.session_state["dados_pendentes_req"] = None
+                st.session_state["req_form_id"] += 1
+                st.rerun()
+
+        with col_conf2:
+            if st.button("❌ Cancelar", key="btn_cancelar_req", use_container_width=True):
+                st.session_state["confirm_req"] = False
+                st.session_state["dados_pendentes_req"] = None
+                st.rerun()
 
     # SCANNER DE CÂMARA EM TEMPO REAL
     with st.expander("📷 Usar Câmara do Chromebook como Leitor de Código de Barras / QR"):
@@ -141,9 +168,12 @@ with tab_req:
 with tab_dev:
     st.header("Registar Devolução de Equipamento")
     
-    # Limpeza segura usando chaves dinâmicas
     if "dev_form_id" not in st.session_state:
         st.session_state["dev_form_id"] = 0
+    if "confirm_dev" not in st.session_state:
+        st.session_state["confirm_dev"] = False
+    if "dados_pendentes_dev" not in st.session_state:
+        st.session_state["dados_pendentes_dev"] = None
 
     dev_id = st.session_state["dev_form_id"]
 
@@ -160,22 +190,45 @@ with tab_dev:
         
         if not codigo_limpo:
             st.error("⚠️ Por favor, introduza ou leia o código do equipamento!")
+            st.session_state["confirm_dev"] = False
         else:
             mask = (df_requisicoes["Codigo_Equipamento"].astype(str).str.strip() == codigo_limpo) & (df_requisicoes["Estado"] == "Pendente")
             
             if mask.any():
+                st.session_state["dados_pendentes_dev"] = codigo_limpo
+                st.session_state["confirm_dev"] = True
+            else:
+                st.error(f"❌ Não foi encontrada nenhuma requisição pendente para o código '{codigo_limpo}'.")
+                st.session_state["confirm_dev"] = False
+
+    # Modal / Bloco de Confirmação para Devolução
+    if st.session_state.get("confirm_dev") and st.session_state.get("dados_pendentes_dev"):
+        codigo_pendente = st.session_state["dados_pendentes_dev"]
+        st.warning(f"❓ **Confirma a devolução do equipamento `{codigo_pendente}`?**")
+        
+        col_dev_conf1, col_dev_conf2 = st.columns(2)
+        with col_dev_conf1:
+            if st.button("👍 Sim, Devolver Equipamento", type="primary", key="btn_sim_dev", use_container_width=True):
+                mask = (df_requisicoes["Codigo_Equipamento"].astype(str).str.strip() == codigo_pendente) & (df_requisicoes["Estado"] == "Pendente")
                 data_dev = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
                 df_requisicoes.loc[mask, "Data_Devolucao"] = data_dev
                 df_requisicoes.loc[mask, "Estado"] = "Devolvido"
                 guardar_dados(df_requisicoes)
                 
-                st.success(f"✅ Equipamento '{codigo_limpo}' devolvido com sucesso em {data_dev}!")
+                st.success(f"✅ Equipamento '{codigo_pendente}' devolvido com sucesso!")
                 
-                # Incrementa o ID para reinicializar o campo em branco
+                # Reset dos estados
+                st.session_state["confirm_dev"] = False
+                st.session_state["dados_pendentes_dev"] = None
                 st.session_state["dev_form_id"] += 1
                 st.rerun()
-            else:
-                st.error(f"❌ Não foi encontrada nenhuma requisição pendente para o código '{codigo_limpo}'.")
+
+        with col_dev_conf2:
+            if st.button("❌ Cancelar", key="btn_cancelar_dev", use_container_width=True):
+                st.session_state["confirm_dev"] = False
+                st.session_state["dados_pendentes_dev"] = None
+                st.rerun()
 
 # ---------------------------------------------------------
 # TAB 3: HISTÓRICO E PENDENTES
