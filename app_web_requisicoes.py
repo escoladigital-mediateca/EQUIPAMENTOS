@@ -12,14 +12,25 @@ st.set_page_config(
 
 FILE_PATH = "requisicoes.csv"
 
+# COLUNAS PADRÃO DA BASE DE DADOS
+COLUNAS = [
+    "ID_Requisicao", "Numero_Aluno", "Nome_Aluno", 
+    "Codigo_Equipamento", "Data_Requisicao", "Data_Devolucao", "Estado"
+]
+
 def carregar_dados():
-    if os.path.exists(FILE_PATH):
-        return pd.read_csv(FILE_PATH, dtype=str)
+    # Verifica se o ficheiro existe e se NÃO está vazio (tamanho > 0 bytes)
+    if os.path.exists(FILE_PATH) and os.path.getsize(FILE_PATH) > 0:
+        try:
+            return pd.read_csv(FILE_PATH, dtype=str)
+        except pd.errors.EmptyDataError:
+            # Se der erro de ficheiro vazio, recria o DataFrame
+            df = pd.DataFrame(columns=COLUNAS)
+            df.to_csv(FILE_PATH, index=False)
+            return df
     else:
-        df = pd.DataFrame(columns=[
-            "ID_Requisicao", "Numero_Aluno", "Nome_Aluno", 
-            "Codigo_Equipamento", "Data_Requisicao", "Data_Devolucao", "Estado"
-        ])
+        # Cria novo ficheiro com cabeçalhos se não existir ou estiver vazio
+        df = pd.DataFrame(columns=COLUNAS)
         df.to_csv(FILE_PATH, index=False)
         return df
 
@@ -72,9 +83,9 @@ with tab_req:
             guardar_dados(df_requisicoes)
             st.success(f"✅ Requisição do equipamento '{codigo_equipamento}' registada para {nome_aluno} com sucesso!")
 
-    # SCANNER DE CÂMARA EM TEMPO REAL (HTML5/JavaScript)
+    # SCANNER DE CÂMARA EM TEMPO REAL
     with st.expander("📷 Usar Câmara do Chromebook como Leitor de Código de Barras / QR"):
-        st.write("Aponte a câmara do Chromebook para o código. Quando detetado, o código será exibido abaixo para você copiar/utilizar.")
+        st.write("Aponte a câmara do Chromebook para o código.")
         
         html_code = """
         <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -88,7 +99,7 @@ with tab_req:
                 // ignora erros de procura de frames
             }
             let html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", { fps: 10, qrbox: {width: 250, height: 250} }, /* verbose= */ false);
+                "reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
         </script>
         """
