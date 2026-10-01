@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import os
 
 # Configuração da página
@@ -12,12 +13,17 @@ st.set_page_config(
 )
 
 FILE_PATH = "requisicoes.csv"
+FUSO_HORARIO_PT = ZoneInfo("Europe/Lisbon")
 
 # COLUNAS PADRÃO DA BASE DE DADOS
 COLUNAS = [
     "ID_Requisicao", "Numero_Aluno", "Nome_Aluno", 
     "Codigo_Equipamento", "Data_Requisicao", "Data_Devolucao", "Estado"
 ]
+
+def obter_hora_portugal():
+    """Retorna a data e hora atual no fuso horário de Portugal."""
+    return datetime.now(FUSO_HORARIO_PT)
 
 def carregar_dados():
     if os.path.exists(FILE_PATH) and os.path.getsize(FILE_PATH) > 0:
@@ -110,8 +116,9 @@ with tab_req:
         col_conf1, col_conf2 = st.columns(2)
         with col_conf1:
             if st.button("👍 Sim, Registar Requisição", type="primary", key="btn_sim_req", use_container_width=True):
-                req_id = datetime.now().strftime("%Y%m%d%H%M%S")
-                data_req = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                agora = obter_hora_portugal()
+                req_id = agora.strftime("%Y%m%d%H%M%S")
+                data_req = agora.strftime("%Y-%m-%d %H:%M:%S")
                 
                 nova_linha = {
                     "ID_Requisicao": req_id,
@@ -126,7 +133,7 @@ with tab_req:
                 df_requisicoes = pd.concat([df_requisicoes, pd.DataFrame([nova_linha])], ignore_index=True)
                 guardar_dados(df_requisicoes)
                 
-                st.success(f"✅ Requisição do equipamento '{dados['codigo']}' registada com sucesso!")
+                st.success(f"✅ Requisição do equipamento '{dados['codigo']}' registada com sucesso em {data_req}!")
                 
                 # Reset dos estados
                 st.session_state["confirm_req"] = False
@@ -210,13 +217,13 @@ with tab_dev:
         with col_dev_conf1:
             if st.button("👍 Sim, Devolver Equipamento", type="primary", key="btn_sim_dev", use_container_width=True):
                 mask = (df_requisicoes["Codigo_Equipamento"].astype(str).str.strip() == codigo_pendente) & (df_requisicoes["Estado"] == "Pendente")
-                data_dev = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                data_dev = obter_hora_portugal().strftime("%Y-%m-%d %H:%M:%S")
                 
                 df_requisicoes.loc[mask, "Data_Devolucao"] = data_dev
                 df_requisicoes.loc[mask, "Estado"] = "Devolvido"
                 guardar_dados(df_requisicoes)
                 
-                st.success(f"✅ Equipamento '{codigo_pendente}' devolvido com sucesso!")
+                st.success(f"✅ Equipamento '{codigo_pendente}' devolvido com sucesso em {data_dev}!")
                 
                 # Reset dos estados
                 st.session_state["confirm_dev"] = False
@@ -248,6 +255,6 @@ with tab_hist:
     st.download_button(
         label="📥 Descarregar Tabela em CSV",
         data=csv_data,
-        file_name=f"requisicoes_{datetime.now().strftime('%Y%m%d')}.csv",
+        file_name=f"requisicoes_{obter_hora_portugal().strftime('%Y%m%d')}.csv",
         mime="text/csv",
     )
