@@ -17,7 +17,6 @@ def carregar_dados():
     if os.path.exists(FILE_PATH):
         return pd.read_csv(FILE_PATH, dtype=str)
     else:
-        # Cria a estrutura da base de dados se não existir
         df = pd.DataFrame(columns=[
             "ID_Requisicao", "Numero_Aluno", "Nome_Aluno", 
             "Codigo_Equipamento", "Data_Requisicao", "Data_Devolucao", "Estado"
@@ -44,27 +43,21 @@ tab_req, tab_dev, tab_hist = st.tabs(["📝 Nova Requisição", "🔄 Devoluçã
 with tab_req:
     st.header("Registar Nova Requisição")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        nome_aluno = st.text_input("Nome do Aluno", placeholder="Ex: João Silva")
-        num_aluno = st.text_input("Número do Aluno", placeholder="Ex: 12345")
-    
-    with col2:
-        st.subheader("Leitura do Código do Equipamento")
-        metodo_qr = st.radio("Escolha como introduzir o código:", ["Digitar / Leitor USB", "Usar Webcam do Chromebook"], horizontal=True)
+    # Usar st.form limpa automaticamente os campos após submeter
+    with st.form(key="form_requisicao", clear_on_submit=True):
+        col1, col2 = st.columns(2)
         
-        codigo_equipamento = ""
-        if metodo_qr == "Digitar / Leitor USB":
-            codigo_equipamento = st.text_input("Código QR / Código de Barras", placeholder="Aproxime o leitor de código USB...")
-        else:
-            img_file = st.camera_input("Tire uma foto ao Código QR do equipamento")
-            if img_file is not None:
-                st.info("💡 Sugestão: Se a leitura por foto automática falhar no browser, podes digitar o código lido na caixa abaixo.")
-                codigo_equipamento = st.text_input("Confirmar Código lido da foto:", key="qr_webcam_input")
+        with col1:
+            nome_aluno = st.text_input("Nome do Aluno", placeholder="Ex: João Silva")
+            num_aluno = st.text_input("Número do Aluno", placeholder="Ex: 12345")
+        
+        with col2:
+            codigo_equipamento = st.text_input("Código QR / Código de Barras do Equipamento", placeholder="Leia com o scanner USB ou digite...")
+            st.caption("📷 Se usares a câmara do Chromebook para tirar foto ao QR, digita o código na caixa acima.")
 
-    st.markdown("---")
-    if st.button("✅ Confirmar Requisição", type="primary", use_container_width=True):
+        btn_submeter = st.form_submit_button("✅ Confirmar Requisição", type="primary", use_container_width=True)
+
+    if btn_submeter:
         if not nome_aluno or not num_aluno or not codigo_equipamento:
             st.error("⚠️ Por favor, preencha todos os campos obrigatórios!")
         else:
@@ -83,8 +76,7 @@ with tab_req:
             
             df_requisicoes = pd.concat([df_requisicoes, pd.DataFrame([nova_linha])], ignore_index=True)
             guardar_dados(df_requisicoes)
-            st.success(f"Requisição do equipamento '{codigo_equipamento}' registada para {nome_aluno} com sucesso!")
-            st.rerun()
+            st.success(f"✅ Requisição do equipamento '{codigo_equipamento}' registada para {nome_aluno} com sucesso!")
 
 # ---------------------------------------------------------
 # TAB 2: DEVOLUÇÃO
@@ -92,18 +84,11 @@ with tab_req:
 with tab_dev:
     st.header("Registar Devolução de Equipamento")
     
-    col_dev1, col_dev2 = st.columns(2)
-    
-    with col_dev1:
-        codigo_dev = st.text_input("Código do Equipamento a Devolver", placeholder="Leia ou introduza o código QR...")
-        
-    with col_dev2:
-        st.write("Ou use a câmara:")
-        img_dev = st.camera_input("Capturar código para devolução")
-        if img_dev is not None and not codigo_dev:
-            codigo_dev = st.text_input("Confirmar código para devolução:", key="dev_qr_input")
+    with st.form(key="form_devolucao", clear_on_submit=True):
+        codigo_dev = st.text_input("Código do Equipamento a Devolver", placeholder="Leia ou introduza o código QR do equipamento...")
+        btn_devolver = st.form_submit_button("🔄 Confirmar Devolução", type="primary", use_container_width=True)
 
-    if st.button("🔄 Confirmar Devolução", type="primary", use_container_width=True):
+    if btn_devolver:
         if not codigo_dev:
             st.error("⚠️ Por favor, introduza o código do equipamento!")
         else:
@@ -114,8 +99,7 @@ with tab_dev:
                 df_requisicoes.loc[mask, "Data_Devolucao"] = data_dev
                 df_requisicoes.loc[mask, "Estado"] = "Devolvido"
                 guardar_dados(df_requisicoes)
-                st.success(f"Equipamento '{codigo_dev}' devolvido com sucesso em {data_dev}!")
-                st.rerun()
+                st.success(f"✅ Equipamento '{codigo_dev}' devolvido com sucesso em {data_dev}!")
             else:
                 st.error(f"❌ Não foi encontrada nenhuma requisição pendente para o código '{codigo_dev}'.")
 
@@ -133,7 +117,6 @@ with tab_hist:
         
     st.dataframe(df_exibir, use_container_width=True)
     
-    # Download do ficheiro em Excel/CSV
     csv_data = df_exibir.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="📥 Descarregar Tabela em CSV",
