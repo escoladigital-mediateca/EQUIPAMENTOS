@@ -47,39 +47,47 @@ st.markdown("---")
 tab_req, tab_dev, tab_hist = st.tabs(["📝 Nova Requisição", "🔄 Devolução", "📋 Histórico & Pendentes"])
 
 # ---------------------------------------------------------
-# TAB 1: NOVA REQUISIÇÃO
+# TAB 1: NOVA REQUISIÇÃO (AJUSTADO PARA LEITOR USB)
 # ---------------------------------------------------------
 with tab_req:
     st.header("Registar Nova Requisição")
     
-    with st.form(key="form_requisicao", clear_on_submit=True):
+    # Inicializar variáveis da sessão para garantir limpeza correta após submissão
+    if "req_nome" not in st.session_state:
+        st.session_state["req_nome"] = ""
+    if "req_num" not in st.session_state:
+        st.session_state["req_num"] = ""
+    if "req_codigo" not in st.session_state:
+        st.session_state["req_codigo"] = ""
+
+    with st.form(key="form_requisicao", clear_on_submit=False):
         col1, col2 = st.columns(2)
         
         with col1:
-            nome_aluno = st.text_input("Nome do Aluno", placeholder="Ex: João Silva")
-            num_aluno = st.text_input("Número do Aluno", placeholder="Ex: 12345")
+            nome_aluno = st.text_input("Nome do Aluno", placeholder="Ex: João Silva", key="req_nome")
+            num_aluno = st.text_input("Número do Aluno", placeholder="Ex: 12345", key="req_num")
         
         with col2:
-            codigo_equipamento = st.text_input("Código QR / Código de Barras do Equipamento", placeholder="Leia com o leitor USB ou digite aqui...")
+            codigo_equipamento = st.text_input("Código QR / Código de Barras do Equipamento", placeholder="Leia com o leitor USB ou digite aqui...", key="req_codigo")
 
         btn_submeter = st.form_submit_button("✅ Confirmar Requisição", type="primary", use_container_width=True)
 
     if btn_submeter:
-        nome_aluno = nome_aluno.strip() if nome_aluno else ""
-        num_aluno = num_aluno.strip() if num_aluno else ""
-        codigo_equipamento = codigo_equipamento.strip() if codigo_equipamento else ""
+        nome_limpo = nome_aluno.strip() if nome_aluno else ""
+        num_limpo = num_aluno.strip() if num_aluno else ""
+        codigo_limpo = codigo_equipamento.strip() if codigo_equipamento else ""
 
-        if not nome_aluno or not num_aluno or not codigo_equipamento:
-            st.error("⚠️ Por favor, preencha todos os campos obrigatórios!")
+        if not nome_limpo or not num_limpo or not codigo_limpo:
+            st.error("⚠️ Por favor, preencha todos os campos obrigatórios (Nome, Número e Código)!")
         else:
             req_id = datetime.now().strftime("%Y%m%d%H%M%S")
             data_req = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             nova_linha = {
                 "ID_Requisicao": req_id,
-                "Numero_Aluno": num_aluno,
-                "Nome_Aluno": nome_aluno,
-                "Codigo_Equipamento": codigo_equipamento,
+                "Numero_Aluno": num_limpo,
+                "Nome_Aluno": nome_limpo,
+                "Codigo_Equipamento": codigo_limpo,
                 "Data_Requisicao": data_req,
                 "Data_Devolucao": "",
                 "Estado": "Pendente"
@@ -87,7 +95,14 @@ with tab_req:
             
             df_requisicoes = pd.concat([df_requisicoes, pd.DataFrame([nova_linha])], ignore_index=True)
             guardar_dados(df_requisicoes)
-            st.success(f"✅ Requisição do equipamento '{codigo_equipamento}' registada para {nome_aluno} com sucesso!")
+            
+            st.success(f"✅ Requisição do equipamento '{codigo_limpo}' registada para {nome_limpo} com sucesso!")
+            
+            # Limpar os campos da sessão após guardar com sucesso
+            st.session_state["req_nome"] = ""
+            st.session_state["req_num"] = ""
+            st.session_state["req_codigo"] = ""
+            st.rerun()
 
     # SCANNER DE CÂMARA EM TEMPO REAL
     with st.expander("📷 Usar Câmara do Chromebook como Leitor de Código de Barras / QR"):
@@ -112,12 +127,11 @@ with tab_req:
         components.html(html_code, height=450)
 
 # ---------------------------------------------------------
-# TAB 2: DEVOLUÇÃO (CORRIGIDO PARA LEITOR USB)
+# TAB 2: DEVOLUÇÃO (AJUSTADO PARA LEITOR USB)
 # ---------------------------------------------------------
 with tab_dev:
     st.header("Registar Devolução de Equipamento")
     
-    # Inicializar a variável na sessão caso não exista
     if "input_dev_codigo" not in st.session_state:
         st.session_state["input_dev_codigo"] = ""
 
@@ -133,9 +147,8 @@ with tab_dev:
         codigo_limpo = codigo_dev.strip() if codigo_dev else ""
         
         if not codigo_limpo:
-            st.error("⚠️️ Por favor, introduza ou leia o código do equipamento!")
+            st.error("⚠️ Por favor, introduza ou leia o código do equipamento!")
         else:
-            # Comparação que ignora espaços extras no início e fim
             mask = (df_requisicoes["Codigo_Equipamento"].astype(str).str.strip() == codigo_limpo) & (df_requisicoes["Estado"] == "Pendente")
             
             if mask.any():
@@ -145,8 +158,8 @@ with tab_dev:
                 guardar_dados(df_requisicoes)
                 
                 st.success(f"✅ Equipamento '{codigo_limpo}' devolvido com sucesso em {data_dev}!")
-                # Limpa a caixa de texto após o sucesso da devolução
                 st.session_state["input_dev_codigo"] = ""
+                st.rerun()
             else:
                 st.error(f"❌ Não foi encontrada nenhuma requisição pendente para o código '{codigo_limpo}'.")
 
