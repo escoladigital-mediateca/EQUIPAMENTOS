@@ -22,7 +22,6 @@ def carregar_dados():
     if os.path.exists(FILE_PATH) and os.path.getsize(FILE_PATH) > 0:
         try:
             df = pd.read_csv(FILE_PATH, dtype=str)
-            # Garantir que todas as colunas existem
             for col in COLUNAS:
                 if col not in df.columns:
                     df[col] = ""
@@ -47,28 +46,26 @@ st.markdown("---")
 tab_req, tab_dev, tab_hist = st.tabs(["📝 Nova Requisição", "🔄 Devolução", "📋 Histórico & Pendentes"])
 
 # ---------------------------------------------------------
-# TAB 1: NOVA REQUISIÇÃO (AJUSTADO PARA LEITOR USB)
+# TAB 1: NOVA REQUISIÇÃO
 # ---------------------------------------------------------
 with tab_req:
     st.header("Registar Nova Requisição")
     
-    # Inicializar variáveis da sessão para garantir limpeza correta após submissão
-    if "req_nome" not in st.session_state:
-        st.session_state["req_nome"] = ""
-    if "req_num" not in st.session_state:
-        st.session_state["req_num"] = ""
-    if "req_codigo" not in st.session_state:
-        st.session_state["req_codigo"] = ""
+    # Limpeza segura usando chaves dinâmicas
+    if "req_form_id" not in st.session_state:
+        st.session_state["req_form_id"] = 0
 
-    with st.form(key="form_requisicao", clear_on_submit=False):
+    form_id = st.session_state["req_form_id"]
+
+    with st.form(key=f"form_requisicao_{form_id}", clear_on_submit=False):
         col1, col2 = st.columns(2)
         
         with col1:
-            nome_aluno = st.text_input("Nome do Aluno", placeholder="Ex: João Silva", key="req_nome")
-            num_aluno = st.text_input("Número do Aluno", placeholder="Ex: 12345", key="req_num")
+            nome_aluno = st.text_input("Nome do Aluno", placeholder="Ex: João Silva", key=f"req_nome_{form_id}")
+            num_aluno = st.text_input("Número do Aluno", placeholder="Ex: 12345", key=f"req_num_{form_id}")
         
         with col2:
-            codigo_equipamento = st.text_input("Código QR / Código de Barras do Equipamento", placeholder="Leia com o leitor USB ou digite aqui...", key="req_codigo")
+            codigo_equipamento = st.text_input("Código QR / Código de Barras do Equipamento", placeholder="Leia com o leitor USB ou digite aqui...", key=f"req_codigo_{form_id}")
 
         btn_submeter = st.form_submit_button("✅ Confirmar Requisição", type="primary", use_container_width=True)
 
@@ -98,10 +95,8 @@ with tab_req:
             
             st.success(f"✅ Requisição do equipamento '{codigo_limpo}' registada para {nome_limpo} com sucesso!")
             
-            # Limpar os campos da sessão após guardar com sucesso
-            st.session_state["req_nome"] = ""
-            st.session_state["req_num"] = ""
-            st.session_state["req_codigo"] = ""
+            # Incrementa o ID para reinicializar os campos em branco
+            st.session_state["req_form_id"] += 1
             st.rerun()
 
     # SCANNER DE CÂMARA EM TEMPO REAL
@@ -127,19 +122,22 @@ with tab_req:
         components.html(html_code, height=450)
 
 # ---------------------------------------------------------
-# TAB 2: DEVOLUÇÃO (AJUSTADO PARA LEITOR USB)
+# TAB 2: DEVOLUÇÃO
 # ---------------------------------------------------------
 with tab_dev:
     st.header("Registar Devolução de Equipamento")
     
-    if "input_dev_codigo" not in st.session_state:
-        st.session_state["input_dev_codigo"] = ""
+    # Limpeza segura usando chaves dinâmicas
+    if "dev_form_id" not in st.session_state:
+        st.session_state["dev_form_id"] = 0
 
-    with st.form(key="form_devolucao", clear_on_submit=False):
+    dev_id = st.session_state["dev_form_id"]
+
+    with st.form(key=f"form_devolucao_{dev_id}", clear_on_submit=False):
         codigo_dev = st.text_input(
             "Código do Equipamento a Devolver", 
             placeholder="Leia com o leitor USB ou digite o código...",
-            key="input_dev_codigo"
+            key=f"input_dev_codigo_{dev_id}"
         )
         btn_devolver = st.form_submit_button("🔄 Confirmar Devolução", type="primary", use_container_width=True)
 
@@ -158,7 +156,9 @@ with tab_dev:
                 guardar_dados(df_requisicoes)
                 
                 st.success(f"✅ Equipamento '{codigo_limpo}' devolvido com sucesso em {data_dev}!")
-                st.session_state["input_dev_codigo"] = ""
+                
+                # Incrementa o ID para reinicializar o campo em branco
+                st.session_state["dev_form_id"] += 1
                 st.rerun()
             else:
                 st.error(f"❌ Não foi encontrada nenhuma requisição pendente para o código '{codigo_limpo}'.")
