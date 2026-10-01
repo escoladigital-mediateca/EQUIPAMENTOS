@@ -6,7 +6,7 @@ import os
 
 # Configuração da página (usa o logo.png se existir para a aba do navegador)
 st.set_page_config(
-    page_title="Sistema de Requisição de Equipamentos",
+    page_title="Sistema de Requisição de Equipamentos - Escola Digital",
     page_icon="logo.png" if os.path.exists("logo.png") else "🎒",
     layout="wide"
 )
