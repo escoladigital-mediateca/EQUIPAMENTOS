@@ -1,13 +1,30 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
 import os
 
+# Configuração da página (podes colocar o logo também como ícone do separador do navegador!)
 st.set_page_config(
     page_title="Sistema de Requisição de Equipamentos",
-    page_icon="🎒",
+    page_icon="logo.png" if os.path.exists("logo.png") else "🎒",
     layout="wide"
+)
+
+# ... (restante código) ...
+
+# TÍTULO COM LOGOTIPO
+col_logo, col_titulo = st.columns([1, 5]) # Cria duas colunas para alinhar a imagem e o texto
+
+with col_logo:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=120) # Ajusta a largura (width) se necessário
+    else:
+        st.title("🎒")
+
+with col_titulo:
+    st.title("Sistema de Requisição de Equipamentos - Escola")
+
+st.markdown("---")
 )
 
 FILE_PATH = "requisicoes.csv"
